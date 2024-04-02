@@ -5,7 +5,7 @@
 :local CFdomain "your.domain.here"
 :local CFapitoken "32charecterToken"
 :local TTL 1800
-:local CFproxied true
+:local proxied true
 :local commentDateTime true
 #-------------Config end-----------------------
 
@@ -17,7 +17,7 @@
 #:log info "WAN address: $wanIP"
 
 ### Check non proxied DNS record against WAN interface address, if they match, exit ###
-:if ($CFproxied = false) \
+:if ($proxied = false) \
 do={
     :local resolvedIP [:resolve $CFdomain]
     #:log info "$CFdomain resolved to: $resolvedIP"
@@ -38,11 +38,13 @@ do={
 :global JParseOut [$fJParse];
 :local CFdomainid ($JParseOut->"result"->0->"id");
 #:log info "Domain ID: $CFdomainid"
-:if ($CFproxied = true) \
+:if ($proxied = true) \
 do={
     :local resolvedIP ($JParseOut->"result"->0->"content");
-    #:log info "$CFdomain (proxied) resolved to: $resolvedIP"
-    :if ($resolvedIP = $wanIP) \
+    :local CFproxied ($JParseOut->"result"->0->"proxied");
+    #:log info "$CFdomain resolved to: $resolvedIP"
+    #:log info "Proxied: $CFproxied"
+    :if ($resolvedIP = $wanIP and $CFproxied = $proxied) \
     do={
         #log info "proxied DNS record matches WAN IP, no action needed"
         return
@@ -59,6 +61,6 @@ do={
     :set cTimestamp "$cDate $cTime $cTimeZone"
 }
 #:log info "DateTime $cTimestamp"
-:local output [/tool fetch http-method=put mode=https url="https://api.cloudflare.com/client/v4/zones/$CFzoneid/dns_records/$CFdomainid" http-header-field="Authorization: Bearer $CFapitoken,content-type:application/json" as-value output=user http-data="{\"type\":\"A\",\"name\":\"$CFdomain\",\"content\":\"$wanIP\",\"ttl\":$TTL,\"proxied\":$CFproxied,\"comment\":\"$cTimestamp\"}"]
+:local output [/tool fetch http-method=put mode=https url="https://api.cloudflare.com/client/v4/zones/$CFzoneid/dns_records/$CFdomainid" http-header-field="Authorization: Bearer $CFapitoken,content-type:application/json" as-value output=user http-data="{\"type\":\"A\",\"name\":\"$CFdomain\",\"content\":\"$wanIP\",\"ttl\":$TTL,\"proxied\":$proxied,\"comment\":\"$cTimestamp\"}"]
 #:log info $output
 :log warning "DNS record updated"
